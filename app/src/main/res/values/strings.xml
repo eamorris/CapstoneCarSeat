@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">Capstone Smart Car Seat</string>
+    <string name="connected">CAR SEAT CONNECTED</string>
+    <string name="connectSeat">CONNECT A CAR SEAT</string>
+    <string name="findDevice">FIND YOUR DEVICE</string>
+    <string name="wizardTitle">Bluetooth Connection Wizard</string>
+    <string name="pairDevice">Pair with your car seat</string>
+    <string name="connectInstructions">Please press the connect button on your car seat and
+                                        select the device when it appears on the list below. </string>
+</resources>
