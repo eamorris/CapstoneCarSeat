@@ -34,4 +34,14 @@
         android:onClick="connectDevice"
         />
 
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Test Geofence"
+        android:id="@+id/geofenceButton"
+        android:layout_above="@+id/connectBtn"
+        android:layout_alignParentStart="true"
+        android:layout_alignEnd="@+id/connectBtn"
+        android:onClick="createGeofence"/>
+
 </RelativeLayout>
