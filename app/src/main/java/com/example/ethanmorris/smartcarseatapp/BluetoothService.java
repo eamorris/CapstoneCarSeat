@@ -1,5 +1,7 @@
 package com.example.ethanmorris.smartcarseatapp;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -10,10 +12,13 @@ import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Binder;
 import android.os.IBinder;
+import android.os.SystemClock;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -35,22 +40,22 @@ public class BluetoothService extends Service {
     private String deviceAddress;
     private String temp = "";
     int counter = 0;
+    private boolean mConnected = false;
 
     private static final int STATE_DISCONNECTED = 0;
     private static final int STATE_CONNECTED = 2;
     private int startMode;
-
-    @Override
-    public void onCreate() {
-        super.onCreate();
-    }
 
     public static final String ACTION_GATT_CONNECTED = "ACTION_GATT_CONNECTED";
     public static final String ACTION_GATT_DISCONNECTED = "ACTION_GATT_DISCONNECTED";
     public static final String ACTION_GATT_SERVICES_DISCOVERED = "ACTION_GATT_SERVICES_DISCOVERED";
     public static final String ACTION_DATA_AVAILABLE = "ACTION_DATA_AVAILABLE";
     public static final String EXTRA_DATA = "EXTRA_DATA";
-    private final String SEND = "ACTIVE";
+    public static final String TRIGGER_ALARM = "TRIGGER_ALARM";
+    private String incomingMessage;
+
+    private AlarmManager alarmManager;
+    private PendingIntent alarmIntent;
 
     public final static UUID UUID_MLDP_DATA_PRIVATE_CHARACTERISTIC = UUID.fromString(ConnectionWizard.MLDP_DATA_PRIVATE_CHAR);
     public final static UUID UUID_CHARACTERISTIC_NOTIFICATION_CONFIG = UUID.fromString(ConnectionWizard.CHARACTERISTIC_NOTIFICATION_CONFIG);
@@ -58,8 +63,15 @@ public class BluetoothService extends Service {
     private final IBinder mBinder = new LocalBinder();
 
     @Override
+    public void onCreate() {
+        super.onCreate();
+        incomingMessage = new String();
+        registerReceiver(broadcastReceiver, gattIntentFilter());
+    }
+
+    @Override
     public int onStartCommand(Intent intent, int flags, int startId){
-        return startMode;
+        return START_STICKY;
     }
 
     @Override
@@ -130,16 +142,23 @@ public class BluetoothService extends Service {
 
         if(action.equals(ACTION_DATA_AVAILABLE)){
             String dataValue = characteristic.getStringValue(0);
-            if(counter != 0) {
-                temp += dataValue;
-            }
-            counter++;
-            //Log.i(TAG, "temp: " + temp);
-            if(temp.length() == 4) {
-                Log.i(TAG, "temp: " + temp);
-                intent.putExtra(EXTRA_DATA, temp);
+
+            if(!dataValue.equals("S")) {
+                if (counter != 0) {
+                    temp += dataValue;
+                }
+
+                counter++;
+
+                if (temp.length() == 4) {
+                    Log.i(TAG, "temp: " + temp);
+                    intent.putExtra(EXTRA_DATA, temp);
+                    temp = "";
+                }
+            }else{
                 temp = "";
             }
+
         }else{
             Log.d(TAG, "Action: " + action);
         }
@@ -190,7 +209,8 @@ public class BluetoothService extends Service {
             return false;
         }
 
-        gatt = bluetoothDevice.connectGatt(this, false, gattCallback);
+        //true is to auto connect and remember device
+        gatt = bluetoothDevice.connectGatt(this, true, gattCallback);
         Log.d(TAG, "Trying to create connection");
         deviceAddress = address;
         return true;
@@ -246,5 +266,90 @@ public class BluetoothService extends Service {
         BluetoothGattDescriptor descriptor = characteristic.getDescriptor(UUID_CHARACTERISTIC_NOTIFICATION_CONFIG);
         descriptor.setValue(BluetoothGattDescriptor.ENABLE_INDICATION_VALUE);
         gatt.writeDescriptor(descriptor);
+    }
+
+    private final BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            final String action = intent.getAction();
+
+            if(BluetoothService.ACTION_GATT_CONNECTED.equals(action)){
+                mConnected = true;
+            }else if(BluetoothService.ACTION_GATT_DISCONNECTED.equals(action)){
+                mConnected = false;
+            }else if(BluetoothService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)){
+                findMldpGattService(getSupportedGattServices());
+                Log.i(TAG, "SERVICES FOUND");
+            }else if(BluetoothService.TRIGGER_ALARM.equals(action)){
+                Log.i(TAG, "Alarm should go off here");
+                alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+                Intent tempIntent = new Intent(context, BluetoothService.class);
+                alarmIntent = PendingIntent.getBroadcast(context, 0, tempIntent, 0);
+                alarmManager.set(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + 1000*60, alarmIntent);
+            }else{
+                if(BluetoothService.ACTION_DATA_AVAILABLE.equals(action)){
+                    Log.i(TAG, BluetoothService.ACTION_DATA_AVAILABLE);
+                    String dataValue = intent.getStringExtra(EXTRA_DATA);
+                    processIncomingPacket(dataValue);
+                }
+            }
+        }
+    };
+
+    private static IntentFilter gattIntentFilter(){
+        final IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction("ACTION_GATT_CONNECTED");
+        intentFilter.addAction("ACTION_GATT_DISCONNECTED");
+        intentFilter.addAction("ACTION_GATT_SERVICES_DISCOVERED");
+        intentFilter.addAction("ACTION_DATA_AVAILABLE");
+        intentFilter.addAction("TRIGGER_ALARM");
+        return intentFilter;
+    }
+
+    private void processIncomingPacket(String data) {
+        incomingMessage = data;
+        //Log.i(TAG, "INCOMINGMESSAGE IS " + incomingMessage);
+        broadcastUpdate(TRIGGER_ALARM);
+    }
+
+    private void findMldpGattService(List <BluetoothGattService> gattServices){
+        if(gattServices == null){
+            Log.d(TAG, "findMldpGattService found no Services");
+            return;
+        }
+
+        for(BluetoothGattService gattService : gattServices){
+            List <BluetoothGattCharacteristic> gattCharacteristics = gattService.getCharacteristics();
+
+            for(BluetoothGattCharacteristic gattCharacteristic : gattCharacteristics){
+                final int characteristicProperties = gattCharacteristic.getProperties();
+
+                if((characteristicProperties & (BluetoothGattCharacteristic.PROPERTY_NOTIFY)) > 0){
+                    setCharacteristicNotification(gattCharacteristic, true);
+                }
+
+                if((characteristicProperties & (BluetoothGattCharacteristic.PROPERTY_INDICATE)) > 0){
+                    setCharacteristicIndication(gattCharacteristic, true);
+                }
+
+                if((characteristicProperties & (BluetoothGattCharacteristic.PROPERTY_WRITE)) > 0){
+                    gattCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+                }
+
+                if((characteristicProperties & (BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE)) > 0){
+                    gattCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+                }
+
+                if((characteristicProperties & (BluetoothGattCharacteristic.PROPERTY_READ)) > 0){
+                    readCharacteristic(gattCharacteristic);
+                }
+            }
+        }
+    }
+
+    public void setDeviceAddress(String address){
+        this.deviceAddress = address;
+        connect(deviceAddress);
     }
 }

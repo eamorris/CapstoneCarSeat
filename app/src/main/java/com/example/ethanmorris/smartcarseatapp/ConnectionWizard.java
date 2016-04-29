@@ -47,7 +47,6 @@ public class ConnectionWizard extends AppCompatActivity{
     public static final String EXTRAS_DEVICE_ADDRESS = "DEVICE_ADDRESS";
     private BluetoothService myService;
     private String mDeviceName, mDeviceAddress;
-    private boolean mConnected = false;
     private BluetoothGattCharacteristic mDataMDLP, mControlMLDP;
     private static final String MLDP_PRIVATE_SERVICE = "00035b03-58e6-07dd-021a-08123a000300";
     public static final String MLDP_DATA_PRIVATE_CHAR =    "00035b03-58e6-07dd-021a-08123a000301";
@@ -99,6 +98,7 @@ public class ConnectionWizard extends AppCompatActivity{
 
                 Intent gattServiceIntent = new Intent(ConnectionWizard.this, BluetoothService.class);
                 bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE);
+                startService(gattServiceIntent);
             }
         });
     }
@@ -107,7 +107,6 @@ public class ConnectionWizard extends AppCompatActivity{
     @Override
     protected void onResume() {
         super.onResume();
-        registerReceiver(broadcastReceiver, gattIntentFilter());
 
         if(myService != null){
             final boolean result = myService.connect(mDeviceAddress);
@@ -123,7 +122,6 @@ public class ConnectionWizard extends AppCompatActivity{
 
     @Override
     protected void onPause() {
-        unregisterReceiver(broadcastReceiver);
         super.onPause();
 
         if (mBluetoothAdapter != null && mBluetoothAdapter.isEnabled()) {
@@ -131,14 +129,6 @@ public class ConnectionWizard extends AppCompatActivity{
         }
     }
 
-    private static IntentFilter gattIntentFilter(){
-        final IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction("ACTION_GATT_CONNECTED");
-        intentFilter.addAction("ACTION_GATT_DISCONNECTED");
-        intentFilter.addAction("ACTION_GATT_SERVICES_DISCOVERED");
-        intentFilter.addAction("ACTION_DATA_AVAILABLE");
-        return intentFilter;
-    }
     public void scanLeDevice(final boolean enable) {
         if (enable) {
 
@@ -177,34 +167,10 @@ public class ConnectionWizard extends AppCompatActivity{
     };
 
     @Override
-    public void onDestroy(){
-        unbindService(mServiceConnection);
-        super.onDestroy();
+    protected void onStop() {
+        Log.i(TAG, "In onStop() " + mDeviceAddress);
+        super.onStop();
     }
-
-    private final BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            final String action = intent.getAction();
-
-
-            if(BluetoothService.ACTION_GATT_CONNECTED.equals(action)){
-                mConnected = true;
-            }else if(BluetoothService.ACTION_GATT_DISCONNECTED.equals(action)){
-                mConnected = false;
-            }else if(BluetoothService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)){
-                findMldpGattService(myService.getSupportedGattServices());
-                Toast.makeText(ConnectionWizard.this, "Services", Toast.LENGTH_LONG).show();
-            }else{
-                if(BluetoothService.ACTION_DATA_AVAILABLE.equals(action)){
-                    Log.i(TAG, BluetoothService.ACTION_DATA_AVAILABLE);
-                    String dataValue = intent.getStringExtra(myService.EXTRA_DATA);
-                    processIncomingPacket(dataValue);
-                }
-            }
-        }
-    };
 
     private final ServiceConnection mServiceConnection = new ServiceConnection(){
 
@@ -216,55 +182,15 @@ public class ConnectionWizard extends AppCompatActivity{
                 finish();
             }
 
+            //test if i can maintain connection
+            //myService.setDeviceAddress(mDeviceAddress);
             myService.connect(mDeviceAddress);
         }
 
+        //Maybe removing this will keep the connection after closing the app
         @Override
         public void onServiceDisconnected(ComponentName componentName){
-            myService = null;
+
         }
     };
-
-    private void processIncomingPacket(String data) {
-        incomingMessage = new String();
-        incomingMessage = data;
-    }
-
-    private void findMldpGattService(List <BluetoothGattService> gattServices){
-        if(gattServices == null){
-            Log.d(TAG, "findMldpGattService found no Services");
-            return;
-        }
-
-        String uuid;
-        mDataMDLP = null;
-
-        for(BluetoothGattService gattService : gattServices){
-            List <BluetoothGattCharacteristic> gattCharacteristics = gattService.getCharacteristics();
-
-            for(BluetoothGattCharacteristic gattCharacteristic : gattCharacteristics){
-                final int characteristicProperties = gattCharacteristic.getProperties();
-
-                if((characteristicProperties & (BluetoothGattCharacteristic.PROPERTY_NOTIFY)) > 0){
-                    myService.setCharacteristicNotification(gattCharacteristic, true);
-                }
-
-                if((characteristicProperties & (BluetoothGattCharacteristic.PROPERTY_INDICATE)) > 0){
-                    myService.setCharacteristicIndication(gattCharacteristic, true);
-                }
-
-                if((characteristicProperties & (BluetoothGattCharacteristic.PROPERTY_WRITE)) > 0){
-                    gattCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
-                }
-
-                if((characteristicProperties & (BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE)) > 0){
-                    gattCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
-                }
-
-                if((characteristicProperties & (BluetoothGattCharacteristic.PROPERTY_READ)) > 0){
-                    myService.readCharacteristic(gattCharacteristic);
-                }
-            }
-        }
-    }
 }
