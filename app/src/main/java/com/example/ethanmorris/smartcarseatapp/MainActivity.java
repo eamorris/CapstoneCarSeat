@@ -1,5 +1,7 @@
 package com.example.ethanmorris.smartcarseatapp;
 
+import android.app.Activity;
+import android.app.AlarmManager;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.bluetooth.BluetoothManager;
@@ -9,6 +11,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.os.SystemClock;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -53,6 +56,10 @@ public class MainActivity extends AppCompatActivity implements ConnectionCallbac
     private PendingIntent mGeofencePendingIntent;
 
     private boolean mGeofencesAdded;
+
+    private AlarmManager alarmManager;
+    private PendingIntent alarmPendingIntent;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -161,17 +168,27 @@ public class MainActivity extends AppCompatActivity implements ConnectionCallbac
             return;
         }
 
+        // Testing Alarm Service
+        /*
+        Intent intent = new Intent(this, AlarmReceiverActivity.class);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 99, intent, PendingIntent.FLAG_CANCEL_CURRENT);
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Activity.ALARM_SERVICE);
+        alarmManager.set(AlarmManager.RTC_WAKEUP, SystemClock.elapsedRealtime() - 1, pendingIntent);
+        */
+
         // Find current location
         mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
         if (mLastLocation != null) {
             Double lat = mLastLocation.getLatitude();
             Double lng = mLastLocation.getLongitude();
             Toast.makeText(this, "Current location found:\n" + lat + "\n" + lng, Toast.LENGTH_SHORT).show();
+            addToGeofenceList(mLastLocation);
+
         } else {
             Toast.makeText(this, "Location not found", Toast.LENGTH_SHORT).show();
         }
 
-        addToGeofenceList(mLastLocation);
+       // addToGeofenceList(mLastLocation);
 
         try {
             LocationServices.GeofencingApi.addGeofences(mGoogleApiClient, getGeofencingRequest(),
@@ -215,6 +232,7 @@ public class MainActivity extends AppCompatActivity implements ConnectionCallbac
                 .setExpirationDuration(Constants.GEOFENCE_EXPIRATION_IN_MILLISECONDS)
                 .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER |
                         Geofence.GEOFENCE_TRANSITION_EXIT)
+
                 .build());
         Toast.makeText(this, "Geofence added", Toast.LENGTH_SHORT).show();
         Log.i(TAG, "Geofence added");

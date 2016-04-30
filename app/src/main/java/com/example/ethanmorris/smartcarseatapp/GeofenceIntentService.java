@@ -1,5 +1,7 @@
 package com.example.ethanmorris.smartcarseatapp;
 
+import android.app.Activity;
+import android.app.AlarmManager;
 import android.app.IntentService;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -9,6 +11,7 @@ import android.content.Context;
 
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.os.SystemClock;
 import android.support.v4.app.NotificationCompat;
 import android.text.TextUtils;
 import android.util.Log;
@@ -54,6 +57,13 @@ public class GeofenceIntentService extends IntentService {
 
             notifyUser(transitionInfo);
             Log.i(TAG, transitionInfo);
+
+            if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_EXIT){
+                Intent alarmIntent = new Intent(this, AlarmReceiverActivity.class);
+                PendingIntent pendingIntent = PendingIntent.getActivity(this, 99, alarmIntent, PendingIntent.FLAG_CANCEL_CURRENT);
+                AlarmManager alarmManager = (AlarmManager) getSystemService(Activity.ALARM_SERVICE);
+                alarmManager.set(AlarmManager.RTC_WAKEUP, SystemClock.elapsedRealtime() - 1, pendingIntent);
+            }
         }
     }
 
@@ -87,7 +97,8 @@ public class GeofenceIntentService extends IntentService {
     private String getTransitionInfo(Context context, int geofenceTransition, List<Geofence> triggeringGeofences) {
 
         String geofenceTransitionInfo;
-        if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER) {
+        if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER
+                || geofenceTransition == Geofence.GEOFENCE_TRANSITION_DWELL) {
             geofenceTransitionInfo = "Vehicle parked. Please secure your child.";
         } else if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_EXIT) {
             geofenceTransitionInfo = "WARNING! Child has been left behind in your car!";
