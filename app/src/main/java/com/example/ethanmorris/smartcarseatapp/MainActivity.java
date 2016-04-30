@@ -1,5 +1,6 @@
 package com.example.ethanmorris.smartcarseatapp;
 
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
@@ -34,6 +35,7 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Map;
 
+// Geofencing methods were based on the resources/guide found on developer.android.com
 
 public class MainActivity extends AppCompatActivity implements ConnectionCallbacks,
         OnConnectionFailedListener, ResultCallback<Status> {
@@ -93,11 +95,7 @@ public class MainActivity extends AppCompatActivity implements ConnectionCallbac
 
         mGeofencesAdded = mSharedPreferences.getBoolean(Constants.GEOFENCES_ADDED_KEY, false);
 
-        // create geofences using current location on button click
-
         buildGoogleApiClient();
-
-
     }
 
     public void checkBluetooth() {
@@ -121,9 +119,7 @@ public class MainActivity extends AppCompatActivity implements ConnectionCallbac
 
     @Override
     public void onConnected(Bundle connectionHint) {
-
         Log.i(TAG, "Connected to GoogleApiClient");
-
     }
 
     @Override
@@ -158,21 +154,20 @@ public class MainActivity extends AppCompatActivity implements ConnectionCallbac
         return builder.build();
     }
 
+    // This method finds the current location and adds it to the list of geofences
     public void createGeofence(View view) {
         if (!mGoogleApiClient.isConnected()) {
             Log.i(TAG, "GoogleApiClient is not connected");
             return;
         }
 
-        // find current location
-
+        // Find current location
         mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
-        if (mLastLocation != null){
+        if (mLastLocation != null) {
             Double lat = mLastLocation.getLatitude();
             Double lng = mLastLocation.getLongitude();
             Toast.makeText(this, "Current location found:\n" + lat + "\n" + lng, Toast.LENGTH_SHORT).show();
-        }
-        else{
+        } else {
             Toast.makeText(this, "Location not found", Toast.LENGTH_SHORT).show();
         }
 
@@ -186,6 +181,28 @@ public class MainActivity extends AppCompatActivity implements ConnectionCallbac
         }
     }
 
+    // This function simply removes all geofences and clears the list of geofences
+    public void removeGeofence(View view) {
+
+        if (!mGoogleApiClient.isConnected()) {
+            Log.i(TAG, "GoogleApiClient is not connected");
+            return;
+        }
+        try {
+            LocationServices.GeofencingApi.removeGeofences(mGoogleApiClient, getGeofencePendingIntent()).setResultCallback(this);
+            mGeofenceList.clear();
+            Toast.makeText(this, "Child secured: Geofence removed", Toast.LENGTH_SHORT).show();
+            Log.i(TAG, "Geofences removed");
+        } catch (SecurityException securityException) {
+            Log.e(TAG, "Security exception");
+        }
+
+        // This clears the notification message that reminds the user to secure their child
+        NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        mNotificationManager.cancel(0);
+    }
+
+    // This method adds a geofence to the list based on the location passed in as a parameter
     public void addToGeofenceList(Location location) {
 
         mGeofenceList.add(new Geofence.Builder()
@@ -199,6 +216,8 @@ public class MainActivity extends AppCompatActivity implements ConnectionCallbac
                 .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER |
                         Geofence.GEOFENCE_TRANSITION_EXIT)
                 .build());
+        Toast.makeText(this, "Geofence added", Toast.LENGTH_SHORT).show();
+        Log.i(TAG, "Geofence added");
     }
 
     private PendingIntent getGeofencePendingIntent() {
@@ -211,16 +230,18 @@ public class MainActivity extends AppCompatActivity implements ConnectionCallbac
     }
 
     public void onResult(Status status) {
+
         if (status.isSuccess()) {
             mGeofencesAdded = !mGeofencesAdded;
             SharedPreferences.Editor editor = mSharedPreferences.edit();
             editor.putBoolean(Constants.GEOFENCES_ADDED_KEY, mGeofencesAdded);
             editor.apply();
-
             Toast.makeText(
-                    this, "Geofence added", Toast.LENGTH_SHORT).show();
+                    this, "Geofence add/delete event", Toast.LENGTH_SHORT).show();
+            String numGeofences = String.valueOf(mGeofenceList.size());
+            Log.i(TAG, "Number of active geofences: " + numGeofences);
         } else {
-            Log.e(TAG, "Error adding geofence");
+            Log.e(TAG, "Error adding/deleting geofences");
         }
     }
 }

@@ -44,4 +44,14 @@
         android:layout_alignEnd="@+id/connectBtn"
         android:onClick="createGeofence"/>
 
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Remove Geofence"
+        android:id="@+id/removeGeofenceButton"
+        android:layout_above="@+id/geofenceButton"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentStart="true"
+        android:onClick="removeGeofence" />
+
 </RelativeLayout>

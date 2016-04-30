@@ -20,6 +20,7 @@ import com.google.android.gms.location.GeofencingEvent;
 import java.util.ArrayList;
 import java.util.List;
 
+// This geofencing service was based on the resources/guide found on developer.android.com
 
 public class GeofenceIntentService extends IntentService {
 
@@ -34,6 +35,7 @@ public class GeofenceIntentService extends IntentService {
         super.onCreate();
     }
 
+    // This method handles the Goefence enter/exit transitions with a notification for now
     @Override
     protected void onHandleIntent(Intent intent) {
         GeofencingEvent geofenceEvent = GeofencingEvent.fromIntent(intent);
@@ -55,7 +57,9 @@ public class GeofenceIntentService extends IntentService {
         }
     }
 
+    // This method gives the user a notification for geofence events
     private void notifyUser(String notificationInfo) {
+
         Intent intent = new Intent(getApplicationContext(), MainActivity.class);
 
         TaskStackBuilder taskStackBuilder = TaskStackBuilder.create(this);
@@ -79,16 +83,19 @@ public class GeofenceIntentService extends IntentService {
         mNotificationManager.notify(0, builder.build());
     }
 
+    // This method sets a geofence trigger message with the corresponding geofence ID that was triggered
     private String getTransitionInfo(Context context, int geofenceTransition, List<Geofence> triggeringGeofences) {
+
         String geofenceTransitionInfo;
         if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER) {
-            geofenceTransitionInfo = "Geofence entered";
+            geofenceTransitionInfo = "Vehicle parked. Please secure your child.";
         } else if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_EXIT) {
-            geofenceTransitionInfo = "Geofence exited";
+            geofenceTransitionInfo = "WARNING! Child has been left behind in your car!";
         } else {
             geofenceTransitionInfo = "Transition not specified";
         }
 
+        // Retrieve ID of geofence with active transition events
         ArrayList triggeringGeofenceIDList = new ArrayList();
         for (Geofence geofence : triggeringGeofences) {
             triggeringGeofenceIDList.add(geofence.getRequestId());
