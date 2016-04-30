@@ -1,8 +1,10 @@
 package com.example.ethanmorris.smartcarseatapp;
 
 import android.app.AlarmManager;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.app.TaskStackBuilder;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
@@ -16,9 +18,12 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.os.Binder;
 import android.os.IBinder;
 import android.os.SystemClock;
+import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -151,8 +156,8 @@ public class BluetoothService extends Service {
                 counter++;
 
                 if (temp.length() == 4) {
-                    Log.i(TAG, "temp: " + temp);
                     intent.putExtra(EXTRA_DATA, temp);
+                    sendBroadcast(intent);
                     temp = "";
                 }
             }else{
@@ -162,8 +167,6 @@ public class BluetoothService extends Service {
         }else{
             Log.d(TAG, "Action: " + action);
         }
-
-        sendBroadcast(intent);
     }
 
     public boolean init(){
@@ -281,16 +284,11 @@ public class BluetoothService extends Service {
             }else if(BluetoothService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)){
                 findMldpGattService(getSupportedGattServices());
                 Log.i(TAG, "SERVICES FOUND");
-            }else if(BluetoothService.TRIGGER_ALARM.equals(action)){
-                Log.i(TAG, "Alarm should go off here");
-                alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-                Intent tempIntent = new Intent(context, BluetoothService.class);
-                alarmIntent = PendingIntent.getBroadcast(context, 0, tempIntent, 0);
-                alarmManager.set(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + 1000*60, alarmIntent);
             }else{
                 if(BluetoothService.ACTION_DATA_AVAILABLE.equals(action)){
                     Log.i(TAG, BluetoothService.ACTION_DATA_AVAILABLE);
                     String dataValue = intent.getStringExtra(EXTRA_DATA);
+                    Log.i(TAG, "DATAVALUE: " + dataValue);
                     processIncomingPacket(dataValue);
                 }
             }
@@ -308,9 +306,41 @@ public class BluetoothService extends Service {
     }
 
     private void processIncomingPacket(String data) {
+
         incomingMessage = data;
-        //Log.i(TAG, "INCOMINGMESSAGE IS " + incomingMessage);
-        broadcastUpdate(TRIGGER_ALARM);
+
+        if(incomingMessage.charAt(0) == '1' && incomingMessage.charAt(3) == '1'){
+            //trigger alarm
+        }
+
+        if(incomingMessage.charAt(1) == '1' && incomingMessage.charAt(3) == '1'){
+            //trigger a notfication
+            Intent intent = new Intent(getApplicationContext(), ConnectionWizard.class);
+
+            TaskStackBuilder taskStackBuilder = TaskStackBuilder.create(this);
+            taskStackBuilder.addParentStack(MainActivity.class);
+            taskStackBuilder.addNextIntent(intent);
+
+            PendingIntent pendingIntent = taskStackBuilder.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(this);
+
+            builder.setSmallIcon(R.mipmap.ic_launcher)
+                    .setLargeIcon(BitmapFactory.decodeResource(getResources(),
+                            R.mipmap.ic_launcher))
+                    .setColor(Color.RED)
+                    .setContentTitle("Child in Danger")
+                    .setContentText("Temperatures approaching dangerous levels")
+                    .setContentIntent(pendingIntent);
+
+            builder.setAutoCancel(true);
+
+            NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            mNotificationManager.notify(0, builder.build());
+        }
+
+        if(incomingMessage.charAt(2) == '1' && incomingMessage.charAt(3) == '1'){
+            //check geofence and trigger alarm if need be
+        }
     }
 
     private void findMldpGattService(List <BluetoothGattService> gattServices){
