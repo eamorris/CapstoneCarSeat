@@ -28,7 +28,10 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
+
+import org.w3c.dom.Text;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -67,11 +70,16 @@ public class ConnectionWizard extends AppCompatActivity{
     private List<ScanFilter> filters;
     private ScanSettings settings;
     BluetoothDevice bluetoothDevice;
+    TextView connectionStatusTextView;
+    TextView connectionInstructionsTextView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_connection_wizard);
+
+        connectionStatusTextView = (TextView) findViewById(R.id.pairText);
+        connectionInstructionsTextView = (TextView) findViewById(R.id.connectionInstructions);
 
         //final Intent intent = getIntent();
         mHandler = new Handler();
@@ -122,6 +130,7 @@ public class ConnectionWizard extends AppCompatActivity{
 
     @Override
     protected void onPause() {
+        unbindService(mServiceConnection);
         super.onPause();
 
         if (mBluetoothAdapter != null && mBluetoothAdapter.isEnabled()) {
@@ -184,13 +193,18 @@ public class ConnectionWizard extends AppCompatActivity{
 
             //test if i can maintain connection
             //myService.setDeviceAddress(mDeviceAddress);
-            myService.connect(mDeviceAddress);
+            if(myService.connect(mDeviceAddress)){
+                connectionStatusTextView.setText("Connected");
+                connectionInstructionsTextView.setText("");
+            };
         }
 
         //Maybe removing this will keep the connection after closing the app
         @Override
         public void onServiceDisconnected(ComponentName componentName){
-
+            myService = null;
+            connectionStatusTextView.setText(R.string.pairDevice);
+            connectionInstructionsTextView.setText(R.string.connectInstructions);
         }
     };
 }

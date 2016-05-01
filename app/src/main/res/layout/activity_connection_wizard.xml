@@ -9,7 +9,7 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     android:background="@color/dark_blue"
 
-    tools:context="com.carseat.capstone.csce.uark.smartcarseatapp.ConnectionWizard">
+    tools:context="com.example.ethanmorris.smartcarseatapp.ConnectionWizard">
 
     <TextView
         android:layout_width="match_parent"
