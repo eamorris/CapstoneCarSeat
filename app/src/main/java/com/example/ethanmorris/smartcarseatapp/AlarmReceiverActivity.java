@@ -10,9 +10,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-
 import com.google.android.gms.location.LocationServices;
-
 import java.io.IOException;
 
 // The alarm code was modeled after a guide posted on blog.mikesir87.io
@@ -40,6 +38,7 @@ public class AlarmReceiverActivity extends AppCompatActivity {
 
         playAlarm(this, getURI());
     }
+
 
     // This function retrieves the user's default alarm sound to use
     private Uri getURI(){

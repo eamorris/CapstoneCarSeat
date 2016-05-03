@@ -362,6 +362,7 @@ public class BluetoothService extends Service implements ConnectionCallbacks,
                     Log.i(TAG, BluetoothService.ACTION_DATA_AVAILABLE);
                     String dataValue = intent.getStringExtra(EXTRA_DATA);
                     Log.i(TAG, dataValue);
+
                     processIncomingPacket(dataValue);
                 }
             }
@@ -428,6 +429,7 @@ public class BluetoothService extends Service implements ConnectionCallbacks,
             Uri sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
             PendingIntent pendingIntent = taskStackBuilder.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
             NotificationCompat.Builder builder = new NotificationCompat.Builder(this);
+
             builder.setSmallIcon(R.mipmap.ic_launcher)
                     .setLargeIcon(BitmapFactory.decodeResource(getResources(),
                             R.mipmap.ic_launcher))

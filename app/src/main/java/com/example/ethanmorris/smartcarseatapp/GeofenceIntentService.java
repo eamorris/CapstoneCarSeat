@@ -61,6 +61,7 @@ public class GeofenceIntentService extends IntentService {
             Log.i(TAG, transitionInfo);
 
             // Trigger an alarm on a geofence exit
+
             if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_EXIT){
                 Intent alarmIntent = new Intent(this, AlarmReceiverActivity.class);
                 PendingIntent pendingIntent = PendingIntent.getActivity(this, 99, alarmIntent, PendingIntent.FLAG_CANCEL_CURRENT);
