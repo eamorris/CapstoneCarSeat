@@ -7,6 +7,6 @@
     <string name="pairDevice">Pair with your car seat</string>
     <string name="connectInstructions">Please press the connect button on your car seat and
                                         select the device when it appears on the list below. </string>
-
+    <string name="alarmMessage">The child has been left in the car! Please ensure that the child is safe!</string>
     <string name="unknown_service">Service Unknown</string>
 </resources>

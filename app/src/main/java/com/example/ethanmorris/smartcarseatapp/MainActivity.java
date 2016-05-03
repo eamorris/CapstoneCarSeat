@@ -1,5 +1,7 @@
 package com.example.ethanmorris.smartcarseatapp;
 
+import android.app.Activity;
+import android.app.AlarmManager;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.bluetooth.BluetoothManager;
@@ -9,6 +11,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.os.SystemClock;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -36,6 +39,10 @@ import java.util.ArrayList;
 import java.util.Map;
 
 // Geofencing methods were based on the resources/guide found on developer.android.com
+// The geofence code is in both the MainActivity and the BluetoothService class. The true
+// functionality is from the code in the BluetoothService.java file. The Geofence code here is
+// simply used for testing/debugging (to be able to run geofences without access to the embedded
+// system), but is not necessary for the goal of the application
 
 public class MainActivity extends AppCompatActivity implements ConnectionCallbacks,
         OnConnectionFailedListener, ResultCallback<Status> {
@@ -53,6 +60,9 @@ public class MainActivity extends AppCompatActivity implements ConnectionCallbac
     private PendingIntent mGeofencePendingIntent;
 
     private boolean mGeofencesAdded;
+
+    private AlarmManager alarmManager;
+    private PendingIntent alarmPendingIntent;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -87,12 +97,12 @@ public class MainActivity extends AppCompatActivity implements ConnectionCallbac
         }
 
         // Geofence code below
-        Button geofenceButton = (Button) findViewById(R.id.geofenceButton);
+       // Button geofenceButton = (Button) findViewById(R.id.geofenceButton);
 
+        // Prep geofences
         mGeofencePendingIntent = null;
         mGeofenceList = new ArrayList<Geofence>();
         mSharedPreferences = getSharedPreferences(Constants.SHARED_PREFERENCES_NAME, MODE_PRIVATE);
-
         mGeofencesAdded = mSharedPreferences.getBoolean(Constants.GEOFENCES_ADDED_KEY, false);
 
         buildGoogleApiClient();
@@ -167,11 +177,11 @@ public class MainActivity extends AppCompatActivity implements ConnectionCallbac
             Double lat = mLastLocation.getLatitude();
             Double lng = mLastLocation.getLongitude();
             Toast.makeText(this, "Current location found:\n" + lat + "\n" + lng, Toast.LENGTH_SHORT).show();
+            addToGeofenceList(mLastLocation);
+
         } else {
             Toast.makeText(this, "Location not found", Toast.LENGTH_SHORT).show();
         }
-
-        addToGeofenceList(mLastLocation);
 
         try {
             LocationServices.GeofencingApi.addGeofences(mGoogleApiClient, getGeofencingRequest(),
@@ -215,6 +225,7 @@ public class MainActivity extends AppCompatActivity implements ConnectionCallbac
                 .setExpirationDuration(Constants.GEOFENCE_EXPIRATION_IN_MILLISECONDS)
                 .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER |
                         Geofence.GEOFENCE_TRANSITION_EXIT)
+
                 .build());
         Toast.makeText(this, "Geofence added", Toast.LENGTH_SHORT).show();
         Log.i(TAG, "Geofence added");

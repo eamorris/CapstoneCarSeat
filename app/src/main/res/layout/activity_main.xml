@@ -10,7 +10,7 @@
     android:background="@color/dark_blue"
 
 
-    tools:context="com.carseat.capstone.csce.uark.smartcarseatapp.MainActivity">
+    tools:context="com.example.ethanmorris.smartcarseatapp.MainActivity">
 
     <TextView
         android:layout_width="match_parent"
@@ -34,6 +34,7 @@
         android:onClick="connectDevice"
         />
 
+    <!--
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -53,5 +54,5 @@
         android:layout_alignParentEnd="true"
         android:layout_alignParentStart="true"
         android:onClick="removeGeofence" />
-
+    -->
 </RelativeLayout>
